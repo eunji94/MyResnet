@@ -3,14 +3,14 @@ import numpy as np
 import tensorflow as tf
 from input_bsds500 import load_data
 import matplotlib.pyplot as plt
+from models import resnet
 
 def psnr(target, ref):
-	diff = ref - target
-	diff = tf.reshape(diff, [tf.size(diff)])
-	rmse = tf.sqrt( tf.reduce_mean(diff ** 2.) )
-	return 20*tf.log(1.0/rmse)/tf.log(tf.constant(10.))
+    rmse = tf.sqrt(tf.reduce_mean(tf.squared_difference(target, ref)))
+    result = 20*tf.log(256*256*3/rmse)/tf.log(tf.constant(10.))
+    return result
 
-batch_size = 64
+batch_size = 32
 total_step = 50
 display_step = 10
 learning_rate = 0.001
@@ -18,24 +18,28 @@ learning_rate = 0.001
 width = 50
 height = 50
 
+"""
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', learning_rate, 'Learning rate')
 flags.DEFINE_integer('batch_size', batch_size, 'Batch size')
+"""
 
 (X_train, Y_train), (X_test, Y_test), (X_val, Y_val) = load_data()
-trainX = trainX.reshape([-1, width, height, 3])
-trainY = trainY.reshape([-1, width, height, 3])
-testX = testX.reshape([-1, width, height, 3])
-testY = testY.reshape([-1, width, height, 3])
-valX = valX.reshape([-1, width, height, 3])
-valY = valY.reshape([-1, width, height, 3])
+"""
+X_train = X_train.reshape([-1, width, height, 3])
+Y_train = Y_train.reshape([-1, width, height, 3])
+X_test = X_test.reshape([-1, width, height, 3])
+Y_test = Y_test.reshape([-1, width, height, 3])
+X_val = X_val.reshape([-1, width, height, 3])
+Y_val = Y_val.reshape([-1, width, height, 3])
+"""
 
-X = tf.placeholder("float", [batch_size, 50, 50, 3])
-Y = tf.placeholder("float", [batch_size, 50, 50, 3])
+X = tf.placeholder("float", [None, 50, 50, 3])
+Y = tf.placeholder("float", [None, 50, 50, 3])
 
 # ResNet Models
-net = models.resnet(X, 20)
+net = resnet(X, 20)
 # net = models.resnet(X, 32)
 # net = models.resnet(X, 44)
 # net = models.resnet(X, 56)
@@ -46,7 +50,7 @@ train_op = tf.train.AdamOptimizer(learning_rate, 0.9).minimize(cost)
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
-
+"""
 saver = tf.train.Saver()
 checkpoint = tf.train.latest_checkpoint(".")
 if checkpoint:
@@ -54,50 +58,56 @@ if checkpoint:
     saver.restore(sess, checkpoint)
 else:
     print "Couldn't find checkpoint to restore from. Starting over."
+"""
 
 for step in range (total_step):
+    avg_cost = 0.
     for i in range (0, len(X_train), batch_size):
         feed_dict={
             X: X_train[i:i + batch_size], 
-            Y: Y_train[i:i + batch_size],
-            learning_rate: learning_rate}
+            Y: Y_train[i:i + batch_size]}
         _, c = sess.run([train_op, cost], feed_dict=feed_dict)
-        if i % 30 == 0:
-            print "training on image #%d" % i
-            saver.save(sess, 'progress', global_step=i)
-
-    if (step+1) % 4 ==0:
+        avg_cost += c/batch_size
+        
+        if (i+1) % 5 == 0:
+            print "training on image #%d" %(i+1)
+            # saver.save(sess, 'progress', global_step=i)
+    
+    if (step+1) % display_step == 0:
         for j in range(0, len(X_val), batch_size):
             feed_dict={
-                X: X_val[i:i + batch_size], 
-                Y: Y_val[i:i + batch_size],
-                learning_rate: learning_rate}
+                X: X_val[j:j + batch_size], 
+                Y: Y_val[j:j + batch_size]}
             _, p = sess.run([train_op, eval_psnr], feed_dict=feed_dict)
-    if (step+1) % display_step == 0:
-        print("Step: ", '%4d'%(step+1), "Cost = ", "{:.9f}".format(cost),
-                "PSNR =", "{:.9f}".format(psnr))
+            avg_psnr = p/batch_size
+        print("Step: %4d"%(step+1), "Cost = {:.9f}".format(avg_cost),
+                "PSNR = {:.9f}".format(avg_psnr))
 
 print("Optimization Finished!")
 
+
 import random
-r = random.randrange(len(testX))
-prediction = sess.run(Y_, {X: testX[r:r+1]})
+r = random.randrange(len(X_test))
+prediction = sess.run(net, {X: X_test[r:r+1]})
+p = format(psnr(prediction, Y_test[r:r+1]))
+
+inp = X_test[r:r+1].reshape([width, height, 3]).astype(np.uint8)
+outp = Y_test[r:r+1].reshape([width, height, 3]).astype(np.uint8)
+prediction = prediction.reshape([width, height, 3]).astype(np.uint8)
+fig = plt.figure()
 a = fig.add_subplot(1,3,1)
 a.set_title('Noise Image(Input)')
-plt.imshow(testX[r:r+1])
+plt.imshow(inp)
 b = fig.add_subplot(1,3,2)
 b.set_title('Denoise Image(Output)')
-b.set_xlabel("PSNR = ", "{:.9f}".format(psnr(prediction, testY[r:r+1])),
-             "SSIM = ", "{:.9f}".format(ssim(prediction, testY[r:r+1])))
+_psnr = "PSNR = "+ p
+b.set_xlabel(_psnr)
 plt.imshow(prediction)
 c = fig.add_subplot(1,3,3)
 c.set_title('Clean Image(Compare)')
-plt.imshow(testY[r:r+1])
+plt.imshow(outp)
 
 fig.suptitle('Random Test')
 plt.show()
 
 sess.close()
-
-    
-    
