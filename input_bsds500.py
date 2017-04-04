@@ -12,8 +12,8 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-width = 200
-height = 200
+width = 100
+height = 100
 
 def load_data(dirname="BSR/BSDS500/data/images"):
 
@@ -48,18 +48,20 @@ def jpg_to_tensor(dirname):
         gaussian_image = Gaussian_noise_layer(resized_image, 10)
         gaussian_image = tf.cast(gaussian_image, tf.float16)
         resized_image = tf.cast(resized_image, tf.float16)
-        
         sess = tf.Session()
         init = tf.global_variables_initializer()
         sess.run(init)
-        tf.train.start_queue_runners(sess)
         y = sess.run(resized_image)
         x = sess.run(gaussian_image)
         """
+        y = y.astype(np.uint8)
+        x =  x.astype(np.uint8)
         fig = plt.figure()
-        fig.add_subplot(1,2,1)
+        a = fig.add_subplot(1,2,1)
+        a.set_title('Noise Image(Input)')
         plt.imshow(y)
-        fig.add_subplot(1,2,2)
+        b = fig.add_subplot(1,2,2)
+        b.set_title('Denoise Image(Output)')
         plt.imshow(x)
         plt.show()
         """
@@ -81,47 +83,3 @@ def Gaussian_noise_layer(input_layer, std):
     noise = tf.random_normal(shape = input_layer.get_shape(), mean = 0.0, stddev = std, dtype = tf.float32)
     input_layer = tf.to_float(input_layer)
     return input_layer + noise
-
-def datasaver():
-    (X_train, Y_train), (X_test, Y_test), (X_val, Y_val) = load_data()
-    path = 'X_train.txt'
-    X_train = X_train.reshape((len(X_train)*width*height*3))
-    data_file = open(path, 'w')
-    for item in X_train:
-        data_file.write("%s\n" % item)
-    data_file.close()
-    
-    path = 'Y_train.txt'
-    Y_train = Y_train.reshape((len(Y_train)*width*height*3))
-    data_file = open(path, 'w')
-    for item in Y_train:
-        data_file.write("%s\n" % item)
-    data_file.close()
-
-    path = 'X_test.txt'
-    X_test = X_test.reshape((len(X_test)*width*height*3))
-    data_file = open(path, 'w')
-    for item in X_test:
-        data_file.write("%s\n" % item)
-    data_file.close()
-
-    path = 'Y_test.txt'
-    Y_test = Y_test.reshape((len(Y_test)*width*height*3))
-    data_file = open(path, 'w')
-    for item in Y_test:
-        data_file.write("%s\n" % item)
-    data_file.close()
-
-    path = 'X_val.txt'
-    X_val = X_val.reshape((len(X_val)*width*height*3))
-    data_file = open(path, 'w')
-    for item in X_train:
-        data_file.write("%s\n" % item)
-    data_file.close()
-
-    path = 'Y_val.txt'
-    Y_val = Y_val.reshape((len(Y_val)*width*height*3))
-    data_file = open(path, 'w')
-    for item in X_train:
-        data_file.write("%s\n" % item)
-    data_file.close()
