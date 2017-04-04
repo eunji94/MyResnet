@@ -5,7 +5,7 @@ def weight_variable(shape, name=None):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial, name=name)
 
-def conv_layer_bn_relu(inpt, filter_shape, stride):
+def conv_bn_relu(inpt, filter_shape, stride):
     out_channels = filter_shape[3]
     filter_ = weight_variable(filter_shape)
     conv = tf.nn.conv2d(inpt, filter=filter_, strides=[1, stride, stride, 1], padding="SAME")
@@ -21,7 +21,7 @@ def conv_layer_bn_relu(inpt, filter_shape, stride):
 
     return out
 
-def conv_layer_relu(inpt, filter_shape, stride):
+def conv_relu(inpt, filter_shape, stride):
     out_channels = filter_shape[3]
     filter_ = weight_variable(filter_shape)
     conv = tf.nn.conv2d(inpt, filter=filter_, strides=[1, stride, stride, 1], padding="SAME")
@@ -40,8 +40,8 @@ def conv_layer(inpt, filter_shape, stride):
 def residual_block(inpt, output_depth, projection=False):
     input_depth = inpt.get_shape().as_list()[3]
 
-    conv1 = conv_layer_bn_relu(inpt, [3, 3, input_depth, output_depth], 1)
-    conv2 = conv_layer_bn_relu(conv1, [3, 3, output_depth, output_depth], 1)
+    conv1 = conv_bn_relu(inpt, [3, 3, input_depth, output_depth], 1)
+    conv2 = conv_bn_relu(conv1, [3, 3, output_depth, output_depth], 1)
     
     if input_depth != output_depth:
         if projection:
