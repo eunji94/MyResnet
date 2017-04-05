@@ -12,38 +12,38 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-width = 100
-height = 100
+width = 200
+height = 200
 
-def load_data(dirname="BSR/BSDS500/data/images"):
+def load_data(dirname="BSDS500_PNG"):
 
     print("Start Data Loading")
     fpath = os.path.join(dirname, 'train')
-    X_train, Y_train = jpg_to_tensor(fpath)
+    X_train, Y_train = png_to_tensor(fpath)
     print("Finish Train Data Loading")
     print("Train Data: ", len(X_train))
     
     fpath = os.path.join(dirname, 'test')
-    X_test, Y_test = jpg_to_tensor(fpath)
+    X_test, Y_test = png_to_tensor(fpath)
     print("Finish Test Data Loading")
     print("Test Data: ", len(X_test))
     
     fpath = os.path.join(dirname, 'val')
-    X_val, Y_val = jpg_to_tensor(fpath)
+    X_val, Y_val = png_to_tensor(fpath)
     print("Finish Validation Data Loading")
     print("Validation Data: ", len(X_val))
     
     return (X_train, Y_train), (X_test, Y_test), (X_val, Y_val)
     
 
-def jpg_to_tensor(dirname):
-    fpath = os.path.join(dirname,'*.jpg')
+def png_to_tensor(dirname):
+    fpath = os.path.join(dirname,'6*.png')
     file_list = glob.glob(fpath)
     X = []
     Y = []
     for i in range(len(file_list)):
-        jpeg_r = tf.read_file(file_list[i])
-        image = tf.image.decode_jpeg(jpeg_r, channels=3)
+        png_r = tf.read_file(file_list[i])
+        image = tf.image.decode_png(png_r, channels=3)
         resized_image = tf.image.resize_image_with_crop_or_pad(image, width, height)
         gaussian_image = Gaussian_noise_layer(resized_image, 10)
         gaussian_image = tf.cast(gaussian_image, tf.float16)
@@ -53,7 +53,7 @@ def jpg_to_tensor(dirname):
         sess.run(init)
         y = sess.run(resized_image)
         x = sess.run(gaussian_image)
-        """
+        
         y = y.astype(np.uint8)
         x =  x.astype(np.uint8)
         fig = plt.figure()
@@ -64,7 +64,7 @@ def jpg_to_tensor(dirname):
         b.set_title('Denoise Image(Output)')
         plt.imshow(x)
         plt.show()
-        """
+        
         if i == 0:
             X = x
             Y = y
@@ -80,6 +80,11 @@ def jpg_to_tensor(dirname):
     return X, Y
 
 def Gaussian_noise_layer(input_layer, std):
-    noise = tf.random_normal(shape = input_layer.get_shape(), mean = 0.0, stddev = std, dtype = tf.float32)
+    # noise = tf.random_normal(shape = input_layer.get_shape(), mean = 0.0, stddev = std, dtype = tf.float32)
+    noise = np.random.normal(0, std, 200*200*3)
+    print(noise)
+    noise = tf.reshape(tf.constant(noise), input_layer.get_shape())
     input_layer = tf.to_float(input_layer)
     return input_layer + noise
+
+png_to_tensor("BSDS500_PNG/train")
